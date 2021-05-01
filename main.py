@@ -180,10 +180,10 @@ def evaluate(data, model, name, nbest=None):
         gold_results += gold_label
     decode_time = time.time() - start_time
     speed = len(instances)/decode_time
-    acc, p, r, f = get_ner_fmeasure(gold_results, pred_results, data.tagScheme)
+    acc, p, r, f, bal_acc, cm = get_ner_fmeasure(gold_results, pred_results, data.tagScheme)
     if nbest and not data.sentence_classification:
-        return speed, acc, p, r, f, nbest_pred_results, pred_scores
-    return speed, acc, p, r, f, pred_results, pred_scores
+        return speed, acc, p, r, f, nbest_pred_results, pred_scores, bal_acc, cm
+    return speed, acc, p, r, f, pred_results, pred_scores, bal_acc, cm
 
 
 def batchify_with_label(input_batch_list, gpu, if_train=True, sentence_classification=False):
@@ -441,16 +441,18 @@ def train(data):
             print("ERROR: LOSS EXPLOSION (>1e8) ! PLEASE SET PROPER PARAMETERS AND STRUCTURE! EXIT....")
             exit(1)
         # continue
-        speed, acc, p, r, f, _,_ = evaluate(data, model, "dev")
+        speed, acc, p, r, f, _,_, bal_acc, cm = evaluate(data, model, "dev")
         dev_finish = time.time()
         dev_cost = dev_finish - epoch_finish
 
         if data.seg:
             current_score = f
-            print("Dev: time: %.2fs, speed: %.2fst/s; acc: %.4f, p: %.4f, r: %.4f, f: %.4f"%(dev_cost, speed, acc, p, r, f))
+            print("Dev: time: %.2fs, speed: %.2fst/s; acc: %.4f, bal_acc: %.4f, p: %.4f, r: %.4f, f: %.4f"%(dev_cost, speed, acc, bal_acc, p, r, f))
+            print(cm)#cm.tabulate()
         else:
             current_score = acc
-            print("Dev: time: %.2fs speed: %.2fst/s; acc: %.4f"%(dev_cost, speed, acc))
+            print("Dev: time: %.2fs speed: %.2fst/s; acc: %.4f; bal_acc: %.4f"%(dev_cost, speed, acc, bal_acc))
+            print(cm)#cm.tabulate()
 
         if current_score > best_dev:
             if data.seg:
@@ -462,13 +464,15 @@ def train(data):
             torch.save(model.state_dict(), model_name)
             best_dev = current_score
         # ## decode test
-        speed, acc, p, r, f, _,_ = evaluate(data, model, "test")
+        speed, acc, p, r, f, _,_, bal_acc, cm = evaluate(data, model, "test")
         test_finish = time.time()
         test_cost = test_finish - dev_finish
         if data.seg:
-            print("Test: time: %.2fs, speed: %.2fst/s; acc: %.4f, p: %.4f, r: %.4f, f: %.4f"%(test_cost, speed, acc, p, r, f))
+            print("Test: time: %.2fs, speed: %.2fst/s; acc: %.4f, bal_acc: %.4f, p: %.4f, r: %.4f, f: %.4f"%(test_cost, speed, acc, bal_acc, p, r, f))
+            print(cm)#cm.tabulate()
         else:
-            print("Test: time: %.2fs, speed: %.2fst/s; acc: %.4f"%(test_cost, speed, acc))
+            print("Test: time: %.2fs, speed: %.2fst/s; acc: %.4f; bal_acc: %.4f"%(test_cost, speed, acc, bal_acc))
+            print(cm)#cm.tabulate()
         gc.collect()
 
 
@@ -491,13 +495,13 @@ def load_model_decode(data, name):
 
     print("Decode %s data, nbest: %s ..."%(name, data.nbest))
     start_time = time.time()
-    speed, acc, p, r, f, pred_results, pred_scores = evaluate(data, model, name, data.nbest)
+    speed, acc, p, r, f, pred_results, pred_scores, bal_acc, cm = evaluate(data, model, name, data.nbest)
     end_time = time.time()
     time_cost = end_time - start_time
     if data.seg:
-        print("%s: time:%.2fs, speed:%.2fst/s; acc: %.4f, p: %.4f, r: %.4f, f: %.4f"%(name, time_cost, speed, acc, p, r, f))
+        print("%s: time:%.2fs, speed:%.2fst/s; acc: %.4f, bal_acc: %.4f, p: %.4f, r: %.4f, f: %.4f"%(name, time_cost, speed, acc, bal_acc, p, r, f))
     else:
-        print("%s: time:%.2fs, speed:%.2fst/s; acc: %.4f"%(name, time_cost, speed, acc))
+        print("%s: time:%.2fs, speed:%.2fst/s; acc: %.4f; bal_acc: %.4f"%(name, time_cost, speed, acc, bal_acc))
     return pred_results, pred_scores
 
 

@@ -194,7 +194,7 @@ def norm2one(vec):
     return vec/root_sum_square
 
 def load_pretrain_emb(embedding_path):
-    embedd_dim = -1
+    embedd_dim = 300#-1
     embedd_dict = dict()
     with open(embedding_path, 'r', encoding="utf8") as file:
         for line in file:
@@ -207,7 +207,7 @@ def load_pretrain_emb(embedding_path):
             elif embedd_dim + 1 != len(tokens):
                 ## ignore illegal embedding line
                 continue
-                # assert (embedd_dim + 1 == len(tokens))
+                assert (embedd_dim + 1 == len(tokens))
             embedd = np.empty([1, embedd_dim])
             embedd[:] = tokens[1:]
             if sys.version_info[0] < 3:

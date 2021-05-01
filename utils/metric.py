@@ -8,11 +8,16 @@
 #
 from __future__ import print_function
 import sys
-
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix
+from .performance import Performance
 
 
 ## input as sentence level labels
-def get_ner_fmeasure(golden_lists, predict_lists, label_type="BMES"):
+def get_ner_fmeasure(golden_lists, predict_lists, label_type="BMES", sentence=True):
+    balanced_accuracy = balanced_accuracy_score(golden_lists, predict_lists)
+    balanced_accuracy_custom = myBalancedAccuracy(golden_lists, predict_lists)
+    #cm = performance = Performance(golden_lists, predict_lists)
+    cm = confusion_matrix(golden_lists, predict_lists)
     sent_num = len(golden_lists)
     golden_full = []
     predict_full = []
@@ -22,10 +27,15 @@ def get_ner_fmeasure(golden_lists, predict_lists, label_type="BMES"):
     for idx in range(0,sent_num):
         # word_list = sentence_lists[idx]
         golden_list = golden_lists[idx]
-        predict_list = predict_lists[idx]
-        for idy in range(len(golden_list)):
+        predict_list = predict_lists[idx] 
+        for idy in range(len(golden_list)): 
+            if sentence:
+                break
             if golden_list[idy] == predict_list[idy]:
                 right_tag += 1
+        if sentence:
+            if golden_list == predict_list:
+                right_tag += 1 
         all_tag += len(golden_list)
         if label_type == "BMES" or label_type == "BIOES":
             gold_matrix = get_ner_BMES(golden_list)
@@ -54,13 +64,14 @@ def get_ner_fmeasure(golden_lists, predict_lists, label_type="BMES"):
         f_measure = -1
     else:
         f_measure = 2*precision*recall/(precision+recall)
-    accuracy = (right_tag+0.0)/all_tag
-    # print "Accuracy: ", right_tag,"/",all_tag,"=",accuracy
+    accuracy = (right_tag+0.0)/(all_tag if not sentence else sent_num)
+    print("Accuracy: ", right_tag,"/",all_tag,"=",accuracy, "sklearn: ", accuracy_score(golden_lists, predict_lists))
+    print("Balanced_Accuracy: ", balanced_accuracy_custom, "sklearn: ", balanced_accuracy)
     if  label_type.upper().startswith("B-"):
         print("gold_num = ", golden_num, " pred_num = ", predict_num, " right_num = ", right_num)
     else:
         print("Right token = ", right_tag, " All token = ", all_tag, " acc = ", accuracy)
-    return accuracy, precision, recall, f_measure
+    return accuracy, precision, recall, f_measure, balanced_accuracy, cm
 
 
 def reverse_style(input_string):
@@ -227,6 +238,38 @@ def fmeasure_from_singlefile(twolabel_file, label_type="BMES", pred_col=-1):
     P,R,F = get_ner_fmeasure(golden_labels, predict_labels, label_type)
     print ("P:%s, R:%s, F:%s"%(P,R,F))
 
+
+
+def myBalancedAccuracy(y_true, y_pred):
+  classes = len(set(y_true+y_pred))
+  #print(classes)
+  total_true = len(y_true)
+  right_ = {}
+  count_ = {}
+  for i in range(total_true):
+    #print(y_true[i],y_pred[i])
+
+    if y_true[i] in count_:
+      count_[y_true[i]] += 1
+    else:
+      count_[y_true[i]] = 1
+
+    if y_true[i]==y_pred[i]:
+      if y_true[i] in right_:
+        right_[y_true[i]] += 1
+      else:
+        right_[y_true[i]] = 1
+
+  #print(class_,count_)
+  acc = 0
+  for k,v in right_.items():
+    acc += v/count_[k]
+  bal_acc = acc/len(count_)
+
+  if classes != len(count_):
+    print("wrong bal.acc.!")
+
+  return bal_acc
 
 
 if __name__ == '__main__':
