@@ -1,0 +1,46 @@
+        sweep_config = {
+            'name': experiment,
+            'method': 'bayes',
+            'metric':
+            {
+                'name': 'eval_balanced_accuracy',
+                'goal': 'maximize'
+            },              
+            'parameters': 
+            {
+                "weight_decay": 
+                {
+                    'min': 0.0,
+                    'max': 0.3
+                    #'values': [0.05]
+                },
+                "learning_rate": 
+                {
+                    #'min': 1e-5,#2e-5,
+                    #'max': 5e-5 #3e-5
+                    'values': [2e-5]
+                },
+                "per_device_train_batch_size":  
+                {
+                    'values': [32] # 1,2 only for XLM, for others set [16,32] 
+                },
+                "num_train_epochs":
+                {
+                    #'min':3,
+                    #'max':5
+                    'values': [20] #20
+                },
+                'dropout':
+                {
+                    #'min': 0.0,
+                    #'max': 0.6
+                    'values': [0.5]
+                }
+            },
+            'early_terminate':
+            {
+                'type': 'hyperband',
+                'max_iter': 5,
+                's': 2
+            }
+        }
